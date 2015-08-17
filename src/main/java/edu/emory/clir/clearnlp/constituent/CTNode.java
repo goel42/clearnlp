@@ -15,23 +15,17 @@
  */
 package edu.emory.clir.clearnlp.constituent;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import edu.emory.clir.clearnlp.conversion.C2DInfo;
 import edu.emory.clir.clearnlp.lexicon.propbank.PBLocation;
 import edu.emory.clir.clearnlp.util.DSUtils;
 import edu.emory.clir.clearnlp.util.StringUtils;
 import edu.emory.clir.clearnlp.util.arc.PBArc;
 import edu.emory.clir.clearnlp.util.constant.StringConst;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @since 3.0.0
@@ -464,6 +458,14 @@ public class CTNode implements Comparable<CTNode>
 				getSubTokens(tokens, child);
 		}
 	}
+
+	public List<CTNode> getEmptyCategoryListInSubtreeCycleFree(Pattern wordFormPattern)
+	{
+		List<CTNode> list = new ArrayList<>();
+		getEmptyCategoryListInSubtreeAux(list, this, wordFormPattern, new HashSet<>());
+
+		return list;
+	}
 	
 	public List<CTNode> getEmptyCategoryListInSubtree(Pattern wordFormPattern)
 	{
@@ -472,14 +474,24 @@ public class CTNode implements Comparable<CTNode>
 		
 		return list;
 	}
-	
+
 	private void getEmptyCategoryListInSubtreeAux(Collection<CTNode> collection, CTNode node, Pattern wordFormPattern)
 	{
 		if (node.isEmptyCategory() && node.matchesWordForm(wordFormPattern))
 			collection.add(node);
-		
+
 		for (CTNode child : node.n_children)
 			getEmptyCategoryListInSubtreeAux(collection, child, wordFormPattern);
+	}
+
+	private void getEmptyCategoryListInSubtreeAux(Collection<CTNode> collection, CTNode node, Pattern wordFormPattern,
+												  Set<CTNode> history)
+	{
+		if (node.isEmptyCategory() && node.matchesWordForm(wordFormPattern))
+			collection.add(node);
+		history.add(node);
+		for (CTNode child : node.n_children)
+			getEmptyCategoryListInSubtreeAux(collection, child, wordFormPattern, history);
 	}
 	
 	public int getDistanceToTop()
