@@ -17,10 +17,7 @@ package edu.emory.clir.clearnlp.bin;
 
 import edu.emory.clir.clearnlp.collection.list.SortedArrayList;
 import edu.emory.clir.clearnlp.collection.pair.Pair;
-import edu.emory.clir.clearnlp.constituent.CTLibEn;
-import edu.emory.clir.clearnlp.constituent.CTNode;
-import edu.emory.clir.clearnlp.constituent.CTTagEn;
-import edu.emory.clir.clearnlp.constituent.CTTree;
+import edu.emory.clir.clearnlp.constituent.*;
 import edu.emory.clir.clearnlp.lexicon.propbank.*;
 import edu.emory.clir.clearnlp.util.BinUtils;
 import edu.emory.clir.clearnlp.util.DSUtils;
@@ -51,6 +48,7 @@ public class PBPostProcess
 	static final public String ERR_LV      = "L";
 
 	final private Pattern P_ICH_RNR = Pattern.compile("\\*(ICH|RNR)\\*.*");
+	final private Pattern P_NONE = Pattern.compile("\\*-\\d+");
 
 	@Option(name="-i", usage="the PropBank file to be post-processed (required)", required=true, metaVar="<filename>")
 	private String s_propFile;
@@ -75,6 +73,19 @@ public class PBPostProcess
 	}
 
 
+	public void sortInstances(String propFile, String postFile, String treeDir, boolean norm)
+	{
+		PBReader reader = new PBReader(IOUtils.createFileInputStream(propFile));
+		List<PBInstance> instances = reader.getSortedInstanceList(treeDir, norm);
+
+		instances.forEach(edu.emory.clir.clearnlp.lexicon.propbank.PBInstance::sortArguments);
+
+		if (postFile == null)
+			printInstances(instances, treeDir);
+		else
+			PBLib.printInstances(instances, IOUtils.createFileOutputStream(postFile));
+	}
+
 	@SuppressWarnings("incomplete-switch")
 	public void postProcess(String propFile, String postFile, String treeDir, boolean norm, TLanguage language)
 	{
@@ -82,7 +93,6 @@ public class PBPostProcess
 		List<PBInstance> instances = reader.getSortedInstanceList(treeDir, norm);
 
 		instances = postProcess(instances, language);
-
 		if (postFile == null)
 			printInstances(instances, treeDir);
 		else
@@ -139,6 +149,8 @@ public class PBPostProcess
 			addLinks(instance);
 			raiseEmptyArguments(instance);					// English only
 			if (aDSP != null) instance.addArgument(aDSP);	// English only
+			instance.sortArguments();
+			instance.sortArguments();
 		}
 
 		instances.removeAll(remove);
@@ -531,6 +543,8 @@ public class PBPostProcess
 						cLoc.set(node.getPBLocation(), "*");
 					}
 				}
+				// if arg location is a WH-phrase "one place in Tampa Bay [that sells morcilla]"
+				//
 				else if (curr.getConstituentTag().startsWith("WH"))
 				{
 					if ((node = CTLibEn.getRelativizer(curr)) != null && (ante = node.getAntecedent()) != null)
@@ -538,7 +552,7 @@ public class PBPostProcess
 				}
 				else if (curr.isEmptyCategoryTerminal())		// *T*, *
 				{
-					cLoc.setHeight(0);
+					cLoc.setHeight(0); // go to terminal of phrase
 					node = tree.getTerminal(cLoc.getTerminalID());
 
 					if ((ante = node.getAntecedent()) != null)
@@ -556,6 +570,31 @@ public class PBPostProcess
 								lDel.add(new PBLocation(ante.getPBLocation(), ""));
 							else
 								arg.addLocation(new PBLocation(ante.getPBLocation(), ";"));
+						}
+					}
+				}
+				else if (curr.isConstituentTag(CTLibEn.C_PP) &&
+						!(list = curr.getEmptyCategoryListInSubtreeCycleFree(P_NONE)).isEmpty())
+				{
+					for (CTNode ec : list)
+					{
+						lDel.add(new PBLocation(ec.getPBLocation(), ""));
+
+						if ((ante = ec.getAntecedent()) != null)
+						{
+							if (ante.isDescendantOf(curr) || pred.isDescendantOf(ante))
+								lDel.add(new PBLocation(ante.getPBLocation(), ""));
+							else {
+								PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
+								boolean found = false;
+								for (PBLocation l: arg.getLocationList()) {
+									if (l.compareTo(loc) == 0) {
+										found = true;
+									}
+								}
+								if (!found)
+									arg.addLocation(loc);
+							}
 						}
 					}
 				}

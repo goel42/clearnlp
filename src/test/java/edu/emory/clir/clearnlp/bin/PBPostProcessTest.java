@@ -36,6 +36,8 @@ public class PBPostProcessTest {
         PBInstance pre = new PBInstance(preString);
         PBInstance expected = new PBInstance(expectedOutput);
         addTreeToInstance(pre);
+        System.out.println(pre.getTree().toString(true, true, "\n"));
+        System.out.println(pre.toString());
         testPBPostProcessSingle(pre, expected);
     }
 

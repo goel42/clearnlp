@@ -15,18 +15,12 @@
  */
 package edu.emory.clir.clearnlp.lexicon.propbank;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
-
 import edu.emory.clir.clearnlp.constituent.CTTree;
 import edu.emory.clir.clearnlp.util.DSUtils;
 import edu.emory.clir.clearnlp.util.constant.StringConst;
+
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @since 3.0.0
@@ -230,6 +224,12 @@ public class PBArgument implements Serializable, Comparable<PBArgument>
 	@Override
 	public int compareTo(PBArgument arg)
 	{
-		return getLocation(0).compareTo(arg.getLocation(0));
+		int comparison =  getLocation(0).compareTo(arg.getLocation(0));
+		if (comparison == 0) {
+			if (arg.s_label.contains("SLC")) {
+				return -1;
+			}
+		}
+		return comparison;
 	}
 }
