@@ -35,7 +35,7 @@ public class PBPostProcessTest {
     public void testPBPostProcessSingle(String preString, String expectedOutput) {
         PBInstance pre = new PBInstance(preString);
         PBInstance expected = new PBInstance(expectedOutput);
-        addTreeToInstance(pre);
+        addTreeToInstance(pre, TREE_DIR);
         System.out.println(pre.getTree().toString(true, true, "\n"));
         System.out.println(pre.toString());
         testPBPostProcessSingle(pre, expected);
@@ -75,9 +75,9 @@ public class PBPostProcessTest {
         return lines;
     }
 
-    public void addTreeToInstance(PBInstance instance) {
+    public void addTreeToInstance(PBInstance instance, String dir) {
         CTReader reader = new CTReader();
-        reader.open(IOUtils.createFileInputStream(TREE_DIR + StringConst.FW_SLASH + instance.getTreePath()));
+        reader.open(IOUtils.createFileInputStream(dir + StringConst.FW_SLASH + instance.getTreePath()));
         CTTree tree = null;
         for (int treeID = -1; treeID < instance.getTreeID(); treeID++) {
             tree = reader.nextTree();
