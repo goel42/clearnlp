@@ -84,7 +84,7 @@ public class PBPostProcess {
         PBReader reader = new PBReader(IOUtils.createFileInputStream(propFile));
         List<PBInstance> instances = reader.getSortedInstanceList(treeDir, norm);
 
-        instances.forEach(edu.emory.clir.clearnlp.lexicon.propbank.PBInstance::sortArguments);
+        instances.forEach(PBInstance::sortArguments);
 
         if (postFile == null)
             printInstances(instances, treeDir);
@@ -153,7 +153,6 @@ public class PBPostProcess {
             addLinks(instance);
             raiseEmptyArguments(instance);                    // English only
             if (aDSP != null) instance.addArgument(aDSP);    // English only
-            instance.sortArguments();
             instance.sortArguments();
         }
 
@@ -505,17 +504,15 @@ public class PBPostProcess {
                 else if (curr.getConstituentTag().startsWith("WH")) {
                     if ((node = CTLibEn.getRelativizer(curr)) != null && (ante = node.getAntecedent()) != null)
                         arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
-                } else if (curr.isEmptyCategoryTerminal())        // *T*, *
+                } else if (curr.isEmptyCategoryTerminal()) // *T*, *
                 {
                     cLoc.setHeight(0); // go to terminal of phrase
                     node = tree.getTerminal(cLoc.getTerminalID());
-
                     if ((ante = node.getAntecedent()) != null)
                         arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
                 } else if (!(list = curr.getEmptyCategoryListInSubtree(P_ICH_RNR)).isEmpty()) {
                     for (CTNode ec : list) {
                         lDel.add(new PBLocation(ec.getPBLocation(), ""));
-
                         if ((ante = ec.getAntecedent()) != null) {
                             if (ante.isDescendantOf(curr) || pred.isDescendantOf(ante))
                                 lDel.add(new PBLocation(ante.getPBLocation(), ""));
@@ -547,9 +544,15 @@ public class PBPostProcess {
                                             else {
                                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
                                                 boolean found = false;
-                                                for (PBLocation l : arg.getLocationList()) {
-                                                    if (l.compareTo(loc) == 0) {
-                                                        found = true;
+                                                for (PBArgument argu: instance.getArgumentList()) {
+                                                    if (argu == arg) {
+                                                        continue;
+                                                    }
+                                                    for (PBLocation l : argu.getLocationList()) {
+                                                        if (l.getTerminalID() == loc.getTerminalID()) {
+                                                            found = true;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                                 if (!found)
@@ -562,24 +565,31 @@ public class PBPostProcess {
                             }
                         }
                     }
-                } else if (curr.isConstituentTag(CTLibEn.C_PP) &&
-                        !(list = curr.getEmptyCategoryListInSubtreeCycleFree(P_NONE)).isEmpty()) {
-                    for (CTNode ec : list) {
+                } else if (curr.isConstituentTag(CTLibEn.C_PP)) {
+                    if (curr.getChildrenList().size() >= 2 &&
+                            curr.getChildrenList().get(1).getFirstTerminal().isEmptyCategory()) {
+                        CTNode ec  = curr.getChildrenList().get(1).getFirstTerminal();
                         lDel.add(new PBLocation(ec.getPBLocation(), ""));
-
                         if ((ante = ec.getAntecedent()) != null) {
                             if (ante.isDescendantOf(curr) || pred.isDescendantOf(ante))
                                 lDel.add(new PBLocation(ante.getPBLocation(), ""));
                             else {
                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
                                 boolean found = false;
-                                for (PBLocation l : arg.getLocationList()) {
-                                    if (l.compareTo(loc) == 0) {
-                                        found = true;
+                                for (PBArgument argu: instance.getArgumentList()) {
+                                    if (argu == arg) {
+                                        continue;
+                                    }
+                                    for (PBLocation l : argu.getLocationList()) {
+                                        if (l.getTerminalID() == loc.getTerminalID()) {
+                                            found = true;
+                                            break;
+                                        }
                                     }
                                 }
-                                if (!found)
+                                if (!found) {
                                     arg.addLocation(loc);
+                                }
                             }
                         }
                     }
