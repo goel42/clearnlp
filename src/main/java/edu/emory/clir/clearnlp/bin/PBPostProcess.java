@@ -15,23 +15,34 @@
  */
 package edu.emory.clir.clearnlp.bin;
 
+import org.kohsuke.args4j.Option;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+
 import edu.emory.clir.clearnlp.collection.list.SortedArrayList;
 import edu.emory.clir.clearnlp.collection.pair.Pair;
 import edu.emory.clir.clearnlp.constituent.CTLibEn;
 import edu.emory.clir.clearnlp.constituent.CTNode;
 import edu.emory.clir.clearnlp.constituent.CTTagEn;
 import edu.emory.clir.clearnlp.constituent.CTTree;
-import edu.emory.clir.clearnlp.lexicon.propbank.*;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBArgument;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBInstance;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBLib;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBLocation;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBReader;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBTag;
 import edu.emory.clir.clearnlp.util.BinUtils;
 import edu.emory.clir.clearnlp.util.DSUtils;
 import edu.emory.clir.clearnlp.util.IOUtils;
 import edu.emory.clir.clearnlp.util.lang.TLanguage;
-import org.kohsuke.args4j.Option;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * @author Jinho D. Choi ({@code jinho.choi@emory.edu})
@@ -485,6 +496,8 @@ public class PBPostProcess {
             if (arg.isLabel(PBTag.PB_REL)) continue;
             lDel.clear();
 
+            CTNode ppWithTrace = null;
+            boolean print = false;
             for (i = 0; i < arg.getLocationSize(); i++)    // size() gets changed dynamically
             {
                 cLoc = arg.getLocation(i);
@@ -520,7 +533,9 @@ public class PBPostProcess {
                                 arg.addLocation(new PBLocation(ante.getPBLocation(), ";"));
                         }
                     }
-                } else if (curr.isConstituentTag(CTLibEn.C_S)
+                }
+                // if a tag follows
+                else if (curr.isConstituentTag(CTLibEn.C_S)
                         && curr.hasFunctionTag(CTLibEn.F_CLR) && !(curr.getEmptyCategoryListInSubtreeCycleFree(P_NONE)).isEmpty()) {
                     for (CTNode child : curr.getChildrenList()) {
                         int childId = child.getPBLocation().getTerminalID();
@@ -588,6 +603,7 @@ public class PBPostProcess {
                                     }
                                 }
                                 if (!found) {
+                                    ppWithTrace = curr;
                                     arg.addLocation(loc);
                                 }
                             }
@@ -601,8 +617,21 @@ public class PBPostProcess {
                             !ante.isEmptyCategoryTerminal() && !existsLocation(instance, ante.getPBLocation()))
                         arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
                 }
+                else if (ppWithTrace != null && i == arg.getLocationSize() - 1) {
+                    List<PBLocation> locations = new ArrayList<>();
+                    locations.add(new PBLocation(ppWithTrace.getPBLocation(), ""));
+                    locations.add(new PBLocation(curr.getPBLocation(), ","));
+                    List<PBLocation> orig = arg.getLocationList();
+                    for (int l = 1; l < orig.size(); ++l) {
+                        locations.add(orig.get(l));
+                    }
+                    int origSize = orig.size();
+                    assert origSize == locations.size() + 1;
+                    arg.setLocations(locations);
+                    print = true;
+                    break;
+                }
             }
-
             // removes errorneous arguments
             for (PBLocation rLoc : lDel)
                 arg.removeLocation(rLoc.getTerminalID(), rLoc.getHeight());
