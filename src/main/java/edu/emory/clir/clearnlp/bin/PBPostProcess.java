@@ -15,40 +15,32 @@
  */
 package edu.emory.clir.clearnlp.bin;
 
-import org.kohsuke.args4j.Option;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
 import edu.emory.clir.clearnlp.collection.list.SortedArrayList;
 import edu.emory.clir.clearnlp.collection.pair.Pair;
 import edu.emory.clir.clearnlp.constituent.CTLibEn;
 import edu.emory.clir.clearnlp.constituent.CTNode;
 import edu.emory.clir.clearnlp.constituent.CTTagEn;
 import edu.emory.clir.clearnlp.constituent.CTTree;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBArgument;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBInstance;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBLib;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBLocation;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBReader;
-import edu.emory.clir.clearnlp.lexicon.propbank.PBTag;
+import edu.emory.clir.clearnlp.lexicon.propbank.*;
 import edu.emory.clir.clearnlp.util.BinUtils;
 import edu.emory.clir.clearnlp.util.DSUtils;
 import edu.emory.clir.clearnlp.util.IOUtils;
 import edu.emory.clir.clearnlp.util.lang.TLanguage;
+import org.kohsuke.args4j.Option;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * @author Jinho D. Choi ({@code jinho.choi@emory.edu})
  * @since 3.0.3
  */
 public class PBPostProcess {
+
+    static java.util.logging.Logger log = java.util.logging.Logger.getAnonymousLogger();
+
     static final public Pattern ILLEGAL_ROLESET = Pattern.compile(".*\\.(ER|NN|IE|YY)");
 
     /**
@@ -103,11 +95,21 @@ public class PBPostProcess {
             PBLib.printInstances(instances, IOUtils.createFileOutputStream(postFile));
     }
 
+    public void setOriginalLocs(List<PBInstance> instances) {
+        for (PBInstance instance : instances) {
+            for (PBArgument argument : instance.getArgumentList()) {
+                for (PBLocation loc : argument.getLocationList()) {
+                    loc.setOriginal(true);
+                }
+            }
+        }
+    }
+
     @SuppressWarnings("incomplete-switch")
     public void postProcess(String propFile, String postFile, String treeDir, boolean norm, TLanguage language) {
         PBReader reader = new PBReader(IOUtils.createFileInputStream(propFile));
         List<PBInstance> instances = reader.getSortedInstanceList(treeDir, norm);
-
+        setOriginalLocs(instances);
         instances = postProcess(instances, language);
         if (postFile == null)
             printInstances(instances, treeDir);
@@ -166,8 +168,10 @@ public class PBPostProcess {
             if (aDSP != null) instance.addArgument(aDSP);    // English only
             instance.sortArguments();
         }
-
-        instances.removeAll(remove);
+        for (PBInstance instance : remove) {
+            log.info("Removing instance: " + instance.toString());
+            instances.remove(instance);
+        }
         return instances;
     }
 
@@ -409,8 +413,12 @@ public class PBPostProcess {
                     lDel.add(curr);
             }
 
-            if (!lDel.isEmpty())
+            if (!lDel.isEmpty()) {
+                for (PBLocation loc : lDel) {
+                    log.info("Removing location: " + loc.toString() + " from " + instance.toString());
+                }
                 arg.removeLocations(lDel);
+            }
         }
     }
 
@@ -475,8 +483,12 @@ public class PBPostProcess {
             }
         }
 
-        if (!lLinks.isEmpty())
+        if (!lLinks.isEmpty()) {
             instance.removeArguments(lLinks);
+            for (PBArgument arg : lLinks) {
+                log.info("Removing argument " + arg.toString() + " from " + instance.toString());
+            }
+        }
     }
 
     /**
@@ -559,7 +571,7 @@ public class PBPostProcess {
                                             else {
                                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
                                                 boolean found = false;
-                                                for (PBArgument argu: instance.getArgumentList()) {
+                                                for (PBArgument argu : instance.getArgumentList()) {
                                                     if (argu == arg) {
                                                         continue;
                                                     }
@@ -583,7 +595,7 @@ public class PBPostProcess {
                 } else if (curr.isConstituentTag(CTLibEn.C_PP)) {
                     if (curr.getChildrenList().size() >= 2 &&
                             curr.getChildrenList().get(1).getFirstTerminal().isEmptyCategory()) {
-                        CTNode ec  = curr.getChildrenList().get(1).getFirstTerminal();
+                        CTNode ec = curr.getChildrenList().get(1).getFirstTerminal();
                         lDel.add(new PBLocation(ec.getPBLocation(), ""));
                         if ((ante = ec.getAntecedent()) != null) {
                             if (ante.isDescendantOf(curr) || pred.isDescendantOf(ante))
@@ -591,7 +603,7 @@ public class PBPostProcess {
                             else {
                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
                                 boolean found = false;
-                                for (PBArgument argu: instance.getArgumentList()) {
+                                for (PBArgument argu : instance.getArgumentList()) {
                                     if (argu == arg) {
                                         continue;
                                     }
@@ -616,8 +628,7 @@ public class PBPostProcess {
                             (ante = node.getAntecedent()) != null && ante.hasFunctionTag(CTTagEn.F_SBJ) &&
                             !ante.isEmptyCategoryTerminal() && !existsLocation(instance, ante.getPBLocation()))
                         arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
-                }
-                else if (ppWithTrace != null && i == arg.getLocationSize() - 1) {
+                } else if (ppWithTrace != null && i == arg.getLocationSize() - 1) {
                     List<PBLocation> locations = new ArrayList<>();
                     locations.add(new PBLocation(ppWithTrace.getPBLocation(), ""));
                     locations.add(new PBLocation(curr.getPBLocation(), ","));
@@ -633,8 +644,10 @@ public class PBPostProcess {
                 }
             }
             // removes errorneous arguments
-            for (PBLocation rLoc : lDel)
+            for (PBLocation rLoc : lDel) {
+                log.info("Removing location " + rLoc.toString() + " from " + instance.toString());
                 arg.removeLocation(rLoc.getTerminalID(), rLoc.getHeight());
+            }
         }
     }
 
@@ -692,7 +705,6 @@ public class PBPostProcess {
                     if (!ai.isLabel("rel")) lDel.add(ai);
                 } else if (DSUtils.hasIntersection(si, sj)) {
                     StringBuilder build = new StringBuilder();
-
                     build.append(ERR_OVERLAP);
                     build.append(":");
                     build.append(ai.getLabel());
@@ -707,7 +719,9 @@ public class PBPostProcess {
                 }
             }
         }
-
+        for (PBArgument arg : lDel) {
+            log.info("Deleted overlapping argument: " + instance.toString() + "\t" + arg.toString());
+        }
         instance.removeArguments(lDel);
         return false;
     }

@@ -43,6 +43,7 @@ public class PBArgument implements Serializable, Comparable<PBArgument>
 	/** @param str "<location>(<operator><location>)*-label". */
 	public PBArgument(String str)
 	{
+		str = str.replaceAll(PBLocation.ORIGINAL_LOC, "");
 		l_locations = new ArrayList<>();
 		int idx = str.indexOf(DELIM);
 		String type;
