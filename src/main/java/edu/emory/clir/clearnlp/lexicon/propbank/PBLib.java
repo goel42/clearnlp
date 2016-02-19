@@ -15,12 +15,6 @@
  */
 package edu.emory.clir.clearnlp.lexicon.propbank;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.util.List;
-import java.util.regex.Pattern;
-
 import edu.emory.clir.clearnlp.constituent.CTReader;
 import edu.emory.clir.clearnlp.constituent.CTTree;
 import edu.emory.clir.clearnlp.util.IOUtils;
@@ -28,6 +22,12 @@ import edu.emory.clir.clearnlp.util.PatternUtils;
 import edu.emory.clir.clearnlp.util.StringUtils;
 import edu.emory.clir.clearnlp.util.arc.SRLArc;
 import edu.emory.clir.clearnlp.util.constant.StringConst;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.List;
+import java.util.regex.Pattern;
 
 
 /**
@@ -87,6 +87,16 @@ public class PBLib
 		for (PBInstance instance : instances)
 			stream.println(instance.toString());
 				
+		stream.close();
+	}
+
+	static public void printTrees(List<CTTree> trees, OutputStream out)
+	{
+		PrintStream stream = IOUtils.createBufferedPrintStream(out);
+
+		for (CTTree instance : trees)
+			stream.println(instance.toString() + "\n");
+
 		stream.close();
 	}
 

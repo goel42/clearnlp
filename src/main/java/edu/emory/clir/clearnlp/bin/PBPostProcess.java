@@ -110,11 +110,14 @@ public class PBPostProcess {
         PBReader reader = new PBReader(IOUtils.createFileInputStream(propFile));
         List<PBInstance> instances = reader.getSortedInstanceList(treeDir, norm);
         setOriginalLocs(instances);
-        instances = postProcess(instances, language);
+        Pair<List<CTTree>, List<PBInstance>> pairs = postProcess(instances, language);
         if (postFile == null)
-            printInstances(instances, treeDir);
-        else
-            PBLib.printInstances(instances, IOUtils.createFileOutputStream(postFile));
+            printInstances(pairs.o2, treeDir);
+        else {
+            PBLib.printInstances(pairs.o2, IOUtils.createFileOutputStream(postFile));
+            PBLib.printTrees(pairs.o1, IOUtils.createFileOutputStream(postFile + ".parse"));
+
+        }
     }
 
     /**
@@ -122,8 +125,9 @@ public class PBPostProcess {
      * @param language  language of trees
      * @return post-processed instances
      */
-    public List<PBInstance> postProcess(List<PBInstance> instances, TLanguage language) {
+    public Pair<List<CTTree>, List<PBInstance>> postProcess(List<PBInstance> instances, TLanguage language) {
         List<PBInstance> remove = new ArrayList<>();
+        List<CTTree> trees = new ArrayList<>();
         mergeLightVerbs(instances);
         PBArgument aDSP;
         CTTree tree;
@@ -144,6 +148,8 @@ public class PBPostProcess {
             {
                 remove.add(instance);
                 continue;
+            } else {
+                trees.add(tree);
             }
 
             // sorts by arguments' terminal IDs
@@ -167,12 +173,15 @@ public class PBPostProcess {
             raiseEmptyArguments(instance);                    // English only
             if (aDSP != null) instance.addArgument(aDSP);    // English only
             instance.sortArguments();
+
+
         }
         for (PBInstance instance : remove) {
             log.info("Removing instance: " + instance.toString());
             instances.remove(instance);
         }
-        return instances;
+
+        return new Pair<>(trees, instances);
     }
 
     /**

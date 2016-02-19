@@ -42,7 +42,7 @@ public class PBPostProcessTest {
     }
 
     public void testPBPostProcessSingle(PBInstance pre, PBInstance expected) {
-        PBInstance post = pbPostProcess.postProcess(Collections.singletonList(pre), TLanguage.ENGLISH).get(0);
+        PBInstance post = pbPostProcess.postProcess(Collections.singletonList(pre), TLanguage.ENGLISH).o2.get(0);
         assertEquals(expected.toString(), post.toString());
     }
 
