@@ -15,23 +15,34 @@
  */
 package edu.emory.clir.clearnlp.bin;
 
+import org.kohsuke.args4j.Option;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+
 import edu.emory.clir.clearnlp.collection.list.SortedArrayList;
 import edu.emory.clir.clearnlp.collection.pair.Pair;
 import edu.emory.clir.clearnlp.constituent.CTLibEn;
 import edu.emory.clir.clearnlp.constituent.CTNode;
 import edu.emory.clir.clearnlp.constituent.CTTagEn;
 import edu.emory.clir.clearnlp.constituent.CTTree;
-import edu.emory.clir.clearnlp.lexicon.propbank.*;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBArgument;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBInstance;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBLib;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBLocation;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBReader;
+import edu.emory.clir.clearnlp.lexicon.propbank.PBTag;
 import edu.emory.clir.clearnlp.util.BinUtils;
 import edu.emory.clir.clearnlp.util.DSUtils;
 import edu.emory.clir.clearnlp.util.IOUtils;
 import edu.emory.clir.clearnlp.util.lang.TLanguage;
-import org.kohsuke.args4j.Option;
-
-import java.io.File;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * @author Jinho D. Choi ({@code jinho.choi@emory.edu})
@@ -518,7 +529,6 @@ public class PBPostProcess {
             lDel.clear();
 
             CTNode ppWithTrace = null;
-            boolean print = false;
             for (i = 0; i < arg.getLocationSize(); i++)    // size() gets changed dynamically
             {
                 cLoc = arg.getLocation(i);
@@ -561,8 +571,7 @@ public class PBPostProcess {
                     for (CTNode child : curr.getChildrenList()) {
                         int childId = child.getPBLocation().getTerminalID();
                         int parentId = curr.getPBLocation().getTerminalID();
-                        if (childId == parentId
-                                || childId != parentId + 1) {
+                        if (childId == parentId || childId != parentId + 1) {
                             continue;
                         }
                         for (CTNode subChild : child.getChildrenList()) {
@@ -575,22 +584,11 @@ public class PBPostProcess {
                                     for (CTNode ec : list) {
                                         lDel.add(new PBLocation(ec.getPBLocation(), ""));
                                         if ((ante = ec.getAntecedent()) != null) {
-                                            if (ante.isDescendantOf(subChild) || pred.isDescendantOf(ante))
+                                            if (ante.isDescendantOf(subChild) || pred.isDescendantOf(ante)) {
                                                 lDel.add(new PBLocation(ante.getPBLocation(), ""));
-                                            else {
+                                            } else {
                                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
-                                                boolean found = false;
-                                                for (PBArgument argu : instance.getArgumentList()) {
-                                                    if (argu == arg) {
-                                                        continue;
-                                                    }
-                                                    for (PBLocation l : argu.getLocationList()) {
-                                                        if (l.getTerminalID() == loc.getTerminalID()) {
-                                                            found = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                }
+                                                boolean found = containsLoc(instance, arg, loc);
                                                 if (!found)
                                                     arg.addLocation(loc);
                                             }
@@ -611,18 +609,7 @@ public class PBPostProcess {
                                 lDel.add(new PBLocation(ante.getPBLocation(), ""));
                             else {
                                 PBLocation loc = new PBLocation(ante.getPBLocation(), "*");
-                                boolean found = false;
-                                for (PBArgument argu : instance.getArgumentList()) {
-                                    if (argu == arg) {
-                                        continue;
-                                    }
-                                    for (PBLocation l : argu.getLocationList()) {
-                                        if (l.getTerminalID() == loc.getTerminalID()) {
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                }
+                                boolean found = containsLoc(instance, arg, loc);
                                 if (!found) {
                                     ppWithTrace = curr;
                                     arg.addLocation(loc);
@@ -648,7 +635,6 @@ public class PBPostProcess {
                     int origSize = orig.size();
                     assert origSize == locations.size() + 1;
                     arg.setLocations(locations);
-                    print = true;
                     break;
                 }
             }
@@ -658,6 +644,22 @@ public class PBPostProcess {
                 arg.removeLocation(rLoc.getTerminalID(), rLoc.getHeight());
             }
         }
+    }
+
+    private static boolean containsLoc(PBInstance instance, PBArgument arg, PBLocation loc) {
+        boolean found = false;
+        for (PBArgument argu : instance.getArgumentList()) {
+            if (argu == arg) {
+                continue;
+            }
+            for (PBLocation l : argu.getLocationList()) {
+                if (l.getTerminalID() == loc.getTerminalID()) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        return found;
     }
 
     /**
