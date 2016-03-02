@@ -1,17 +1,9 @@
 /**
- * Copyright 2015, Emory University
- * <p/>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2015, Emory University <p/> Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of the License at <p/> http://www.apache.org/licenses/LICENSE-2.0
+ * <p/> Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS
+ * IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 package edu.emory.clir.clearnlp.bin;
 
@@ -126,7 +118,7 @@ public class PBPostProcess {
             printInstances(pairs.o2, treeDir);
         else {
             PBLib.printInstances(pairs.o2, IOUtils.createFileOutputStream(postFile));
-            PBLib.printTrees(pairs.o1, IOUtils.createFileOutputStream(postFile + ".parse"));
+//            PBLib.printTrees(pairs.o1, IOUtils.createFileOutputStream(postFile + ".parse"));
 
         }
     }
@@ -318,8 +310,7 @@ public class PBPostProcess {
     }
 
     /**
-     * Joins concatenated locations by replacing them with higher nodes.
-     * PRE: {@link PBInstance#sortArguments()} is called.
+     * Joins concatenated locations by replacing them with higher nodes. PRE: {@link PBInstance#sortArguments()} is called.
      */
     private void joinConcatenations(PBInstance instance) {
         SortedArrayList<Integer> ids = new SortedArrayList<>();
@@ -371,8 +362,7 @@ public class PBPostProcess {
     }
 
     /**
-     * Fixes locations cyclic to its predicate.
-     * PRE: {@link PBInstance#sortArguments()} is called.
+     * Fixes locations cyclic to its predicate. PRE: {@link PBInstance#sortArguments()} is called.
      */
     private void fixCyclicLocations(PBInstance instance) {
         CTTree tree = instance.getTree();
@@ -413,8 +403,7 @@ public class PBPostProcess {
     }
 
     /**
-     * Removes redundant or overlapping locations of this argument.
-     * PRE: {@link PBInstance#sortArguments()} is called.
+     * Removes redundant or overlapping locations of this argument. PRE: {@link PBInstance#sortArguments()} is called.
      */
     private void removeRedundantLocations(PBInstance instance) {
         List<PBLocation> lDel = new ArrayList<>();
@@ -464,8 +453,7 @@ public class PBPostProcess {
     }
 
     /**
-     * Adds antecedents from manual annotation of LINK-*.
-     * PRE: {@link PBInstance#sortArguments()} is called.
+     * Adds antecedents from manual annotation of LINK-*. PRE: {@link PBInstance#sortArguments()} is called.
      */
     private void setLinks(PBInstance instance) {
         List<PBArgument> lLinks = new ArrayList<>();
@@ -512,8 +500,8 @@ public class PBPostProcess {
     }
 
     /**
-     * Normalizes links.
-     * PRE: {@link CTTree#initPBLocations()} and {@link PBPostProcess#setLinks(PBInstance)} needs to be called before.
+     * Normalizes links. PRE: {@link CTTree#initPBLocations()} and {@link PBPostProcess#setLinks(PBInstance)} needs to be called
+     * before.
      */
     private void normalizeLinks(PBInstance instance) {
         List<PBLocation> lDel = new ArrayList<>();
@@ -620,10 +608,19 @@ public class PBPostProcess {
                 } else if (curr.isConstituentTag(CTTagEn.C_S) && (node = curr.getFirstChild(CTLibEn.M_SBJ)) != null && node.isEmptyCategoryTerminal() && curr.containsChild(CTLibEn.M_VP)) {
                     node = node.getFirstTerminal();
 
-                    if (CTLibEn.P_PASSIVE_NULL.matcher(node.getWordForm()).find() &&
-                            (ante = node.getAntecedent()) != null && ante.hasFunctionTag(CTTagEn.F_SBJ) &&
-                            !ante.isEmptyCategoryTerminal() && !existsLocation(instance, ante.getPBLocation()))
-                        arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
+                    boolean passiveNull = CTLibEn.P_PASSIVE_NULL.matcher(node.getWordForm()).matches();
+                    boolean hasNonEmptySubjAntecedent = (ante = node.getAntecedent()) != null
+                            && ante.hasFunctionTag(CTTagEn.F_SBJ)
+                            && !ante.isEmptyCategoryTerminal()
+                            && !existsLocation(instance, ante.getPBLocation());
+                    if (passiveNull && hasNonEmptySubjAntecedent) {
+//                        if (node.getWordForm().contains("PRO")) {
+                            arg.addLocation(new PBLocation(ante.getPBLocation(), "*"));
+//                        } else {
+//                            arg.addLocation(new PBLocation(ante.getPBLocation(), ","));
+//                        }
+                    }
+
                 } else if (ppWithTrace != null && i == arg.getLocationSize() - 1) {
                     List<PBLocation> locations = new ArrayList<>();
                     locations.add(new PBLocation(ppWithTrace.getPBLocation(), ""));
